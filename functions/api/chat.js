@@ -66,6 +66,10 @@ function collectTexts(items) {
   return texts;
 }
 
+// 内置兜底智能体：已发布 API 渠道、与当前 Token 同空间、实测可用。
+// 当环境变量 COZE_BOT_ID 填错（不存在/未发布 API）时自动回退，避免面板里抄错长数字导致整站不可用。
+const FALLBACK_BOT_ID = '7684145093359452202';
+
 /**
  * 发起一次对话并取回完整答复。返回 { reply, src }
  */
@@ -73,14 +77,21 @@ async function chatWith(env, userMessage) {
   // 每次提问新建会话，避免在共享账号里积累历史；
   // 注意不能设置 auto_save_history=false，否则扣子强制流式且无法 retrieve。
   const user_id = 'guest_' + Math.floor(100000 + Math.random() * 900000);
-  const created = await coze(env, 'POST', '/v3/chat', {
-    bot_id: env.COZE_BOT_ID,
+
+  const createChat = (botId) => coze(env, 'POST', '/v3/chat', {
+    bot_id: botId,
     user_id,
     stream: false,
     additional_messages: [
       { role: 'user', content: userMessage, content_type: 'text' },
     ],
   });
+
+  let created = await createChat(env.COZE_BOT_ID);
+  // 4200=Bot不存在/空间不匹配，4015=未发布到 API 渠道：自动回退到内置可用智能体
+  if (created.code === 4200 || created.code === 4015) {
+    created = await createChat(FALLBACK_BOT_ID);
+  }
 
   if (!(created.code == null || created.code === 0)) {
     throw new Error(created.msg || created.detail || '创建对话失败');
