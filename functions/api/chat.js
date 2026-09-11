@@ -66,9 +66,10 @@ function collectTexts(items) {
   return texts;
 }
 
-// 内置兜底智能体：已发布 API 渠道、与当前 Token 同空间、实测可用。
-// 当环境变量 COZE_BOT_ID 填错（不存在/未发布 API）时自动回退，避免面板里抄错长数字导致整站不可用。
-const FALLBACK_BOT_ID = '7684145093359452202';
+// 指定的正式智能体：已发布 API 渠道、与当前 Token 同空间、实测可用。
+// 作为第一优先使用；仅当它不可用时才回退到面板环境变量 COZE_BOT_ID。
+// 这样无论 Cloudflare 面板里那串长数字填成什么，网站都固定用这个袁采。
+const PRIMARY_BOT_ID = '7684145093359452202';
 
 /**
  * 发起一次对话并取回完整答复。返回 { reply, src }
@@ -87,10 +88,10 @@ async function chatWith(env, userMessage) {
     ],
   });
 
-  let created = await createChat(env.COZE_BOT_ID);
-  // 4200=Bot不存在/空间不匹配，4015=未发布到 API 渠道：自动回退到内置可用智能体
-  if (created.code === 4200 || created.code === 4015) {
-    created = await createChat(FALLBACK_BOT_ID);
+  // 先用指定的正式智能体；它若失效（4200 不存在 / 4015 未发布 API），再尝试面板里的 COZE_BOT_ID
+  let created = await createChat(PRIMARY_BOT_ID);
+  if ((created.code === 4200 || created.code === 4015) && env.COZE_BOT_ID && env.COZE_BOT_ID !== PRIMARY_BOT_ID) {
+    created = await createChat(env.COZE_BOT_ID);
   }
 
   if (!(created.code == null || created.code === 0)) {

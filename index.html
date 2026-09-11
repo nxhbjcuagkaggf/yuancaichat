@@ -618,6 +618,12 @@
     document.addEventListener('DOMContentLoaded', function(){ setTimeout(run, 60); });
     // 硬保底：即使 load/DOMContentLoaded 因资源卡住未触发，2.5s 后也强制播放并在随后移除
     setTimeout(function(){ setTimeout(run, 60); }, 2500);
+    // 动画期间用户的第一次点击：立即收起动画层，绝不阻挡页面任何交互
+    document.addEventListener('pointerdown', function dismiss(){
+      if (intro && !intro.classList.contains('hide')) intro.classList.add('hide');
+      setTimeout(function(){ if (intro) { intro.style.display = 'none'; intro.remove(); } }, 250);
+      document.removeEventListener('pointerdown', dismiss, true);
+    }, true);
     if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(run, 120);
   })();
 </script>
