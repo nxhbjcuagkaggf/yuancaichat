@@ -23,7 +23,7 @@ function json(status, obj) {
   });
 }
 
-async function coze(env, method, path, payload, timeoutMs = 20000) {
+async function coze(env, method, path, payload, timeoutMs = 30000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -93,15 +93,16 @@ async function chatWith(env, userMessage) {
   const q = (s) => encodeURIComponent(String(s == null ? '' : s));
   const base = 'chat_id=' + q(chat_id) + '&conversation_id=' + q(conv_id);
 
-  // 轮询直至生成完成（Cloudflare Worker 单次执行上限约 30s，这里最多等约 26s）
+  // 轮询直至生成完成。Cloudflare 免费版限制的是 CPU 时间而非墙钟时间，
+  // 等待网络响应（fetch/sleep）不占用 CPU，故可放心等到 45s，兼容生成较慢的模型。
   let status = '';
-  const deadline = Date.now() + 26000;
+  const deadline = Date.now() + 45000;
   while (Date.now() < deadline) {
     const st = await coze(env, 'GET', '/v3/chat/retrieve?' + base);
     status = (st.data || {}).status;
     if (status === 'completed' || status === 'local_success') break;
     if (status === 'failed') throw new Error('对话生成失败，请重试');
-    await sleep(1200);
+    await sleep(800);
   }
   if (status !== 'completed' && status !== 'local_success') {
     throw new Error('对话生成超时，请重试');
