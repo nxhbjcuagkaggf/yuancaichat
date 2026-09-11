@@ -514,8 +514,8 @@
     });
   }
 
-  /* ---------- 向本站后端代理请求对话（SSE 流式：心跳保活，防止长连接被掐断） ---------- */
-  function askBackend(text){
+  /* ---------- 向本站后端代理请求对话（SSE 流式：心跳保活 + 失败自动重试） ---------- */
+  function askOnce(text){
     return fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -563,6 +563,23 @@
         return { text: ev.reply || '(先生微有片刻沉吟，未能作答。请换一句话再问。)', src: ev.src || '' };
       });
     });
+  }
+
+  /* 网络抖动（pages.dev 在部分国内网络下长连接会被随机重置）时自动重试，最多 3 次 */
+  function askBackend(text){
+    var attempts = 0;
+    function attempt(){
+      attempts++;
+      return askOnce(text).catch(function(err){
+        var msg = String(err && err.message ? err.message : err);
+        var retriable = /Failed to fetch|连接中断|NetworkError|network|ERR_|load failed/i.test(msg);
+        if (retriable && attempts < 3){
+          return new Promise(function(res){ setTimeout(res, 600 * attempts); }).then(attempt);
+        }
+        throw err;
+      });
+    }
+    return attempt();
   }
 })();
 </script>
