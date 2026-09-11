@@ -1,0 +1,15 @@
+# Render Blueprint：用 render.yaml 一键部署（Render → New → Blueprint）
+services:
+  - type: web
+    name: yuanshi-shifan-chuji
+    runtime: python
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /
+    buildCommand: ""
+    startCommand: "python3 server.py"
+    envVars:
+      - key: COZE_API_TOKEN
+        sync: false
+      - key: COZE_BOT_ID
+        sync: false

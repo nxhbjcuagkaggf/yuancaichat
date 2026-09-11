@@ -1,0 +1,8 @@
+# 凭据与本地临时文件（绝不提交）
+.env
+.env.*
+!*.example
+
+__pycache__/
+*.pyc
+.DS_Store
