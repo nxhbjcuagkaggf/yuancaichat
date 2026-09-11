@@ -66,10 +66,12 @@ function collectTexts(items) {
   return texts;
 }
 
-// 指定的正式智能体：已发布 API 渠道、与当前 Token 同空间、实测可用。
-// 作为第一优先使用；仅当它不可用时才回退到面板环境变量 COZE_BOT_ID。
-// 这样无论 Cloudflare 面板里那串长数字填成什么，网站都固定用这个袁采。
-const PRIMARY_BOT_ID = '7684145093359452202';
+// 智能体选择：
+//   PRIMARY_BOT_ID   —— 第一优先（本地长期调试、回答风格最满意的袁采）
+//   SECONDARY_BOT_ID —— 内置备用（主力失效时自动顶上，均已发布 API 渠道、与 Token 同空间、实测可用）
+// 面板环境变量 COZE_BOT_ID 仅作最后兜底，填错也不影响网站。
+const PRIMARY_BOT_ID = '7683854178863087650';
+const SECONDARY_BOT_ID = '7684145093359452202';
 
 /**
  * 发起一次对话并取回完整答复。返回 { reply, src }
@@ -88,10 +90,16 @@ async function chatWith(env, userMessage) {
     ],
   });
 
-  // 先用指定的正式智能体；它若失效（4200 不存在 / 4015 未发布 API），再尝试面板里的 COZE_BOT_ID
-  let created = await createChat(PRIMARY_BOT_ID);
-  if ((created.code === 4200 || created.code === 4015) && env.COZE_BOT_ID && env.COZE_BOT_ID !== PRIMARY_BOT_ID) {
-    created = await createChat(env.COZE_BOT_ID);
+  // 依次尝试：主力 → 内置备用 → 面板 COZE_BOT_ID（4200 不存在 / 4015 未发布 API 即切换）
+  const botCandidates = [PRIMARY_BOT_ID, SECONDARY_BOT_ID];
+  if (env.COZE_BOT_ID && !botCandidates.includes(env.COZE_BOT_ID)) {
+    botCandidates.push(env.COZE_BOT_ID);
+  }
+  let created = null;
+  for (const botId of botCandidates) {
+    created = await createChat(botId);
+    if (created.code == null || created.code === 0) break;
+    if (created.code !== 4200 && created.code !== 4015) break;
   }
 
   if (!(created.code == null || created.code === 0)) {
