@@ -122,9 +122,9 @@
   article.entry:hover{border-color:rgba(145,70,66,.45);box-shadow:0 4px 14px rgba(89,51,46,.08)}
   .entry.open{border-color:rgba(145,70,66,.55);background:rgba(145,70,66,.04)}
   .entry.open::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--cinnabar)}
-  .entry-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
-  .entry-body>*{min-height:0;overflow:hidden}
-  .entry.open .entry-body{grid-template-rows:1fr}
+  /* 折叠展开使用兼容性最好的 max-height 方案（grid 0fr/1fr 在部分 Safari/WebKit 上不重绘，会导致点不开） */
+  .entry-body{max-height:0;overflow:hidden;transition:max-height .35s var(--ease)}
+  .entry.open .entry-body{max-height:3200px}
   .entry-toggle{
     width:100%;border:none;background:transparent;cursor:pointer;text-align:left;
     display:flex;align-items:center;gap:10px;padding:13px 14px;
