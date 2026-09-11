@@ -40,8 +40,8 @@
   .scroll-deco::after{bottom:-11px}
   .scroll-deco i{position:absolute;left:50%;top:14px;bottom:14px;width:1px;transform:translateX(-50%);
     background:linear-gradient(180deg,transparent,rgba(145,70,66,.10),rgba(145,70,66,.14),rgba(145,70,66,.10),transparent)}
-  .scroll-deco.left{left:12px}
-  .scroll-deco.right{right:12px}
+  .scroll-deco.left{left:max(18px,calc((100vw - 1440px)/2 + 10px))}
+  .scroll-deco.right{right:max(18px,calc((100vw - 1440px)/2 + 10px))}
   @media (max-width:1120px){.scroll-deco{display:none}}
   html,body{margin:0;padding:0}
   body{
@@ -251,7 +251,7 @@
   .send-btn:disabled{opacity:.5;cursor:not-allowed}
 
   /* ---------- 开卷动画 ---------- */
-  #intro{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+  #intro{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;pointer-events:none;
     background:radial-gradient(120% 120% at 50% 40%,#f7f0e0,#eadcc0);transition:opacity .8s ease}
   .intro-scroll{display:flex;align-items:stretch;height:168px;max-width:88vw}
   .intro-rod{flex:0 0 30px;border-radius:8px;position:relative;
