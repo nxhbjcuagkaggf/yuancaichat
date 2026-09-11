@@ -196,10 +196,42 @@ export async function onRequest(context) {
     return json(500, { error: '服务端未配置 COZE_API_TOKEN 或 COZE_BOT_ID，请先在 Cloudflare Pages 环境变量中补充' });
   }
 
-  try {
-    const { reply, src } = await chatWith(env, message);
-    return json(200, { reply, src });
-  } catch (e) {
-    return json(502, { error: String(e && e.message ? e.message : e) });
-  }
+  // 使用 SSE 流式响应：等待扣子生成期间每 3 秒发一个心跳，
+  // 防止长连接因长时间无数据被中间网络/校园网/防火墙重置（ERR_CONNECTION_CLOSED）。
+  const encoder = new TextEncoder();
+  const sseHeaders = {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const emit = (obj) => {
+        try {
+          controller.enqueue(encoder.encode('data: ' + JSON.stringify(obj) + '\n\n'));
+        } catch (_) {}
+      };
+      // 立即先吐一个字节，让浏览器马上收到响应头与首包
+      emit({ type: 'ping' });
+      const beat = setInterval(() => emit({ type: 'ping' }), 3000);
+      try {
+        const { reply, src } = await chatWith(env, message);
+        emit({ type: 'done', reply, src });
+      } catch (e) {
+        emit({ type: 'error', error: String(e && e.message ? e.message : e) });
+      } finally {
+        clearInterval(beat);
+        try {
+          controller.close();
+        } catch (_) {}
+      }
+    },
+  });
+
+  return new Response(stream, { status: 200, headers: sseHeaders });
 }

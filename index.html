@@ -514,19 +514,54 @@
     });
   }
 
-  /* ---------- 向本站后端代理请求对话（令牌与 Bot 均在服务端，前端不接触密钥） ---------- */
+  /* ---------- 向本站后端代理请求对话（SSE 流式：心跳保活，防止长连接被掐断） ---------- */
   function askBackend(text){
     return fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text })
-    })
-    .then(function(r){ return r.json().then(function(j){ return { status:r.status, json:j }; }); })
-    .then(function(res){
-      if (res.status !== 200 || res.json.error){
-        throw new Error((res.json && res.json.error) || ('HTTP ' + res.status));
+    }).then(function(r){
+      var ctype = r.headers.get('content-type') || '';
+      // 非流式响应（参数校验/配置错误等）：按普通 JSON 错误处理
+      if (r.status !== 200 || ctype.indexOf('text/event-stream') === -1){
+        return r.json().catch(function(){ return { error: 'HTTP ' + r.status }; })
+          .then(function(j){ throw new Error((j && j.error) || ('HTTP ' + r.status)); });
       }
-      return { text: res.json.reply || '(先生微有片刻沉吟，未能作答。请换一句话再问。)', src: res.json.src || '' };
+      if (!r.body || !r.body.getReader){
+        // 极旧浏览器兜底
+        return r.json().then(function(j){
+          if (j.error) throw new Error(j.error);
+          return { text: j.reply || '', src: j.src || '' };
+        });
+      }
+      var reader = r.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      var last = null;
+      function pump(){
+        return reader.read().then(function(chunk){
+          if (chunk.done) return last;
+          buf += decoder.decode(chunk.value, { stream: true });
+          var idx;
+          while ((idx = buf.indexOf('\n\n')) !== -1){
+            var raw = buf.slice(0, idx);
+            buf = buf.slice(idx + 2);
+            var line = null;
+            raw.split('\n').forEach(function(l){ if (l.indexOf('data:') === 0) line = l.slice(5).trim(); });
+            if (!line) continue;
+            try {
+              var ev = JSON.parse(line);
+              if (ev.type === 'done' || ev.type === 'error') last = ev;
+            } catch (_) {}
+          }
+          return pump();
+        });
+      }
+      return pump().then(function(ev){
+        if (!ev) throw new Error('连接中断，请重试');
+        if (ev.type === 'error') throw new Error(ev.error || '生成失败，请重试');
+        return { text: ev.reply || '(先生微有片刻沉吟，未能作答。请换一句话再问。)', src: ev.src || '' };
+      });
     });
   }
 })();
