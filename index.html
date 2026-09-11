@@ -563,7 +563,10 @@
       setTimeout(function(){ if (intro) { intro.style.display = 'none'; intro.remove(); } }, 4800);
     }
     window.addEventListener('load', function(){ setTimeout(run, 60); });
-    if (document.readyState === 'complete') setTimeout(run, 120);
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(run, 60); });
+    // 硬保底：即使 load/DOMContentLoaded 因资源卡住未触发，2.5s 后也强制播放并在随后移除
+    setTimeout(function(){ setTimeout(run, 60); }, 2500);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(run, 120);
   })();
 </script>
 
