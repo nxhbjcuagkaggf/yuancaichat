@@ -66,41 +66,31 @@ function collectTexts(items) {
   return texts;
 }
 
-// 智能体选择：
-//   PRIMARY_BOT_ID   —— 第一优先（本地长期调试、回答风格最满意的袁采）
-//   SECONDARY_BOT_ID —— 内置备用（主力失效时自动顶上，均已发布 API 渠道、与 Token 同空间、实测可用）
+// 智能体选择（2026-09-12 用线上 Token 实测，均已发布 API 渠道、同属一个空间）：
+//   PRIMARY_BOT_ID   —— 7684145093359452202，回答切题凝练，约 26 秒完成，作为主力
+//   SECONDARY_BOT_ID —— 7683854178863087650，扮演感强但长回复约 56 秒，主力异常时兜底
 // 面板环境变量 COZE_BOT_ID 仅作最后兜底，填错也不影响网站。
-const PRIMARY_BOT_ID = '7683854178863087650';
-const SECONDARY_BOT_ID = '7684145093359452202';
+// 注：7684161474704670760 在本 Token 空间内不存在（扣子返回 4200），无法使用。
+const PRIMARY_BOT_ID = '7684145093359452202';
+const SECONDARY_BOT_ID = '7683854178863087650';
+// 单个智能体的最长等待：实测最慢的长回复约 56 秒，给到 75 秒余量。
+const PER_BOT_DEADLINE_MS = 75000;
 
 /**
- * 发起一次对话并取回完整答复。返回 { reply, src }
+ * 用指定智能体发起一次对话并取回完整答复。返回 { reply, src }。
+ * 任何失败（不存在 / 未发布 / 超时 / 生成失败）都抛错，由上层切换下一个候选。
  */
-async function chatWith(env, userMessage) {
+async function attemptBot(env, botId, userMessage, userId) {
   // 每次提问新建会话，避免在共享账号里积累历史；
   // 注意不能设置 auto_save_history=false，否则扣子强制流式且无法 retrieve。
-  const user_id = 'guest_' + Math.floor(100000 + Math.random() * 900000);
-
-  const createChat = (botId) => coze(env, 'POST', '/v3/chat', {
+  const created = await coze(env, 'POST', '/v3/chat', {
     bot_id: botId,
-    user_id,
+    user_id: userId,
     stream: false,
     additional_messages: [
       { role: 'user', content: userMessage, content_type: 'text' },
     ],
   });
-
-  // 依次尝试：主力 → 内置备用 → 面板 COZE_BOT_ID（4200 不存在 / 4015 未发布 API 即切换）
-  const botCandidates = [PRIMARY_BOT_ID, SECONDARY_BOT_ID];
-  if (env.COZE_BOT_ID && !botCandidates.includes(env.COZE_BOT_ID)) {
-    botCandidates.push(env.COZE_BOT_ID);
-  }
-  let created = null;
-  for (const botId of botCandidates) {
-    created = await createChat(botId);
-    if (created.code == null || created.code === 0) break;
-    if (created.code !== 4200 && created.code !== 4015) break;
-  }
 
   if (!(created.code == null || created.code === 0)) {
     throw new Error(created.msg || created.detail || '创建对话失败');
@@ -114,9 +104,9 @@ async function chatWith(env, userMessage) {
   const base = 'chat_id=' + q(chat_id) + '&conversation_id=' + q(conv_id);
 
   // 轮询直至生成完成。Cloudflare 免费版限制的是 CPU 时间而非墙钟时间，
-  // 等待网络响应（fetch/sleep）不占用 CPU，故可放心等到 45s，兼容生成较慢的模型。
+  // 等待网络响应（fetch/sleep）不占用 CPU；期间 SSE 心跳每 3 秒下发，连接不会断。
   let status = '';
-  const deadline = Date.now() + 45000;
+  const deadline = Date.now() + PER_BOT_DEADLINE_MS;
   while (Date.now() < deadline) {
     const st = await coze(env, 'GET', '/v3/chat/retrieve?' + base);
     status = (st.data || {}).status;
@@ -185,6 +175,28 @@ async function chatWith(env, userMessage) {
   return { reply: answer, src };
 }
 
+/**
+ * 依次尝试候选智能体：主力 → 内置备用 → 面板 COZE_BOT_ID。
+ * 任一智能体创建失败、超时或生成失败，立即切换下一个，全部失败才把最后错误抛给前端。
+ */
+async function chatWith(env, userMessage) {
+  const userId = 'guest_' + Math.floor(100000 + Math.random() * 900000);
+  const botCandidates = [PRIMARY_BOT_ID, SECONDARY_BOT_ID];
+  if (env.COZE_BOT_ID && !botCandidates.includes(env.COZE_BOT_ID)) {
+    botCandidates.push(env.COZE_BOT_ID);
+  }
+
+  let lastErr = null;
+  for (const botId of botCandidates) {
+    try {
+      return await attemptBot(env, botId, userMessage, userId);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('所有智能体暂不可用，请稍后再试');
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -212,8 +224,8 @@ export async function onRequest(context) {
   }
   if (!message) return json(400, { error: 'message 不能为空' });
 
-  if (!env.COZE_API_TOKEN || !env.COZE_BOT_ID) {
-    return json(500, { error: '服务端未配置 COZE_API_TOKEN 或 COZE_BOT_ID，请先在 Cloudflare Pages 环境变量中补充' });
+  if (!env.COZE_API_TOKEN) {
+    return json(500, { error: '服务端未配置 COZE_API_TOKEN，请先在 Cloudflare Pages 环境变量中补充' });
   }
 
   // 使用 SSE 流式响应：等待扣子生成期间每 3 秒发一个心跳，
