@@ -77,32 +77,23 @@
   /* 页头 */
   header.hero{padding:6px 0 12px;border-bottom:1px solid var(--line);margin-bottom:10px;text-align:center}
   h1{margin:0;font-family:"标题隶书","华文隶书","STLiti","LiSu","Baoli SC","隶书",serif;font-size:clamp(30px,4.2vw,44px);font-weight:400;line-height:1.2;letter-spacing:.06em;color:var(--ink)}
-  /* 标题 + 朱砂闲章并排，窄屏自动换行 */
-  .hero-head{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
-  .hero-title{position:relative;display:inline-block;padding:8px 34px;background:linear-gradient(180deg,#f3ecd9,#eae0c4);border:1px solid rgba(145,70,66,.18);border-radius:9px;box-shadow:0 6px 18px rgba(89,51,46,.07);margin:0}
-  .hero-title::before,.hero-title::after{content:"";position:absolute;top:50%;transform:translateY(-50%);width:16px;height:54px;background:linear-gradient(180deg,#e0bd85,#bd8f4f);border:1px solid rgba(140,90,30,.35);border-radius:7px;box-shadow:0 1px 3px rgba(89,51,46,.25)}
+  /* 标题横幅：标题 + 横幅内朱砂小字副题 */
+  .hero-title{position:relative;display:inline-block;padding:10px 40px 13px;background:linear-gradient(180deg,#f3ecd9,#eae0c4);border:1px solid rgba(145,70,66,.18);border-radius:9px;box-shadow:0 6px 18px rgba(89,51,46,.07);margin:0 auto;text-align:center}
+  .hero-title::before,.hero-title::after{content:"";position:absolute;top:6px;bottom:6px;width:16px;background:linear-gradient(180deg,#e0bd85,#bd8f4f);border:1px solid rgba(140,90,30,.35);border-radius:7px;box-shadow:0 1px 3px rgba(89,51,46,.25)}
   .hero-title::before{left:-11px}
   .hero-title::after{right:-11px}
   .hero-title h1{font-size:clamp(26px,3.4vw,38px);line-height:1.15}
-  /* 朱砂闲章：白文方印，微微欹侧，如手盖朱印 */
-  .hero-seal{
-    position:relative;flex:0 0 auto;align-self:center;
-    display:inline-flex;align-items:center;
-    padding:7px 11px;border-radius:5px;
-    background:var(--cinnabar);color:#f8efe1;
-    border:1.5px solid #8f2d23;
-    font-family:var(--serif);font-size:12px;font-weight:600;
-    letter-spacing:.14em;line-height:1.3;white-space:nowrap;
-    box-shadow:inset 0 0 0 1px rgba(248,239,225,.55),1px 2px 6px rgba(143,45,35,.3);
-    transform:rotate(-2.5deg);
+  /* 横幅内副题：朱砂小字，两侧渐隐细线，如落款引首 */
+  .hero-sub{margin:6px 0 0;display:flex;align-items:center;justify-content:center;gap:12px;
+    font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--cinnabar);white-space:nowrap}
+  .hero-sub::before,.hero-sub::after{content:"";width:26px;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(176,58,46,.55))}
+  .hero-sub::after{background:linear-gradient(90deg,rgba(176,58,46,.55),transparent)}
+  @media (max-width:560px){
+    .hero-title{padding:9px 30px 11px}
+    .hero-sub{font-size:11.5px;letter-spacing:.14em;gap:8px}
+    .hero-sub::before,.hero-sub::after{width:16px}
   }
-  /* 印泥斑驳的细碎留白 */
-  .hero-seal::before{content:"";position:absolute;inset:0;border-radius:5px;pointer-events:none;
-    background:
-      radial-gradient(circle at 12% 30%,rgba(245,241,233,.5) 0 1.5px,transparent 2px),
-      radial-gradient(circle at 82% 68%,rgba(245,241,233,.4) 0 1px,transparent 1.6px),
-      radial-gradient(circle at 46% 88%,rgba(245,241,233,.35) 0 1.2px,transparent 1.8px);}
-  @media (max-width:560px){.hero-seal{font-size:11px;letter-spacing:.1em;padding:6px 9px}}
   .hero-meta{margin:8px auto 0;font-size:12px;color:var(--ink-soft);font-family:var(--sans);letter-spacing:.06em;display:inline-block;padding:6px 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
   .hero-meta b{color:var(--accent);font-weight:600}
 
@@ -326,9 +317,9 @@
 <div class="scroll-deco right" aria-hidden="true"><i></i></div>
 <div class="wrap">
   <header class="hero">
-    <div class="hero-head">
-      <div class="hero-title"><h1>此间处己 · 处己语</h1></div>
-      <span class="hero-seal">与南宋袁采 · 共话处己之道</span>
+    <div class="hero-title">
+      <h1>此间处己 · 处己语</h1>
+      <p class="hero-sub">与南宋袁采 · 共话处己之道</p>
     </div>
   </header>
 
