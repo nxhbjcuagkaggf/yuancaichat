@@ -298,18 +298,19 @@
     animation:charBob 3.6s ease-in-out 3s infinite}
   @keyframes charBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
   #intro.open .intro-char{opacity:1;transform:translateY(0) scale(1)}
-  .intro-rod{flex:0 0 40px;border-radius:10px;position:relative;
-    background:linear-gradient(180deg,#e6c486,#b98d4e 55%,#9a6f34);
-    box-shadow:2px 2px 10px rgba(89,51,46,.35)}
-  .intro-rod::after{content:"";position:absolute;inset:8px 9px;border-radius:7px;
-    background:repeating-linear-gradient(90deg,rgba(255,255,255,.12) 0 4px,transparent 4px 9px)}
-  .intro-rod.left{border-radius:11px 3px 3px 11px}
-  .intro-rod.right{border-radius:3px 11px 11px 3px}
+  /* 圆木轴：整根圆柱形，上下略探出纸面，端头全圆；横向明暗模拟柱面弧光，两端深色作轴头 */
+  .intro-rod{flex:0 0 42px;align-self:center;height:calc(100% + 26px);margin:0 -1px;border-radius:999px;position:relative;z-index:3;
+    background:
+      linear-gradient(90deg,rgba(74,44,14,.55) 0%,rgba(120,74,26,.16) 22%,rgba(255,236,190,.6) 45%,rgba(255,242,208,.55) 52%,rgba(120,74,26,.16) 78%,rgba(74,44,14,.55) 100%),
+      linear-gradient(180deg,#7d5427 0,#d8ac63 14px,#bf8c46 50%,#d8ac63 calc(100% - 14px),#7d5427 100%);
+    box-shadow:0 8px 18px rgba(89,51,46,.3),inset 0 3px 6px rgba(255,238,200,.28),inset 0 -5px 9px rgba(74,44,14,.36)}
+  .intro-rod::after{content:"";position:absolute;top:18px;bottom:18px;left:50%;width:12px;margin-left:-6px;border-radius:6px;
+    background:linear-gradient(180deg,transparent,rgba(255,243,214,.4) 25%,rgba(255,243,214,.4) 75%,transparent)}
   /* 初始完全闭合：纸面宽度与内边距均为 0，左右轴杆贴合；展开时二者同步过渡 */
   .intro-paper{position:relative;flex:0 0 0px;min-width:0;overflow:hidden;display:grid;place-items:center;align-content:center;text-align:center;
     padding:0;
     background:linear-gradient(90deg,#f0e6cc,#f7efda 50%,#efe5c8);
-    box-shadow:inset 0 0 0 1px rgba(145,70,66,.12),0 10px 30px rgba(89,51,46,.18);
+    box-shadow:inset 18px 0 22px -18px rgba(120,70,25,.5),inset -18px 0 22px -18px rgba(120,70,25,.5),inset 0 0 0 1px rgba(145,70,66,.12),0 10px 30px rgba(89,51,46,.18);
     transition:flex-basis 1.9s cubic-bezier(.55,0,.2,1),padding 1.9s cubic-bezier(.55,0,.2,1)}
   #intro.open .intro-paper{flex-basis:min(74vw,820px);padding:0 178px 0 44px}
   .intro-paper h1{margin:0;padding:0 16px;font-family:"标题隶书","华文隶书","STLiti","LiSu","Baoli SC","隶书",serif;
@@ -323,7 +324,8 @@
   #intro.hide{opacity:0;pointer-events:none}
   @media (max-width:600px){
     .intro-scroll{height:150px;max-width:100%}
-    .intro-rod{flex:0 0 28px}
+    .intro-rod{flex:0 0 30px;height:calc(100% + 18px)}
+    .intro-rod::after{top:12px;bottom:12px;width:8px;margin-left:-4px}
     #intro.open .intro-paper{flex-basis:calc(100vw - 104px);padding:0 76px 0 16px}
     .intro-char{height:74px;right:5px;bottom:0}
     .intro-paper h1{font-size:22px;letter-spacing:.03em;white-space:nowrap;padding:0}
