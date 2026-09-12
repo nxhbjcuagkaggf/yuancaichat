@@ -10,6 +10,12 @@
     src:url('fonts/wenkai-title.ttf') format('truetype');
     font-weight:400;font-style:normal;font-display:swap;
   }
+  /* 标题隶书 · 仅子集化「此间处己 · 语」6 个标题用字，2.7KB，全站设备显示一致 */
+  @font-face{
+    font-family:"标题隶书";
+    src:url('fonts/lishu-title.ttf') format('truetype');
+    font-weight:normal;font-style:normal;font-display:swap;
+  }
   :root{
     --canvas:#f5f1e9;            /* 宣纸米杏底 */
     --surface:#fffdf7;           /* 卡片面 */
@@ -70,7 +76,7 @@
 
   /* 页头 */
   header.hero{padding:6px 0 12px;border-bottom:1px solid var(--line);margin-bottom:10px;text-align:center}
-  h1{margin:0;font-family:"华文隶书","隶书","LiSu","STLiti","楷体","Songti SC",serif;font-size:clamp(30px,4.2vw,44px);font-weight:700;line-height:1.2;letter-spacing:.06em;color:var(--ink)}
+  h1{margin:0;font-family:"标题隶书","华文隶书","STLiti","LiSu","Baoli SC","隶书",serif;font-size:clamp(30px,4.2vw,44px);font-weight:700;line-height:1.2;letter-spacing:.06em;color:var(--ink);-webkit-text-stroke:.4px currentColor}
   .hero-title{position:relative;display:inline-block;padding:8px 34px;background:linear-gradient(180deg,#f3ecd9,#eae0c4);border:1px solid rgba(145,70,66,.18);border-radius:9px;box-shadow:0 6px 18px rgba(89,51,46,.07);margin:0 auto}
   .hero-title::before,.hero-title::after{content:"";position:absolute;top:50%;transform:translateY(-50%);width:16px;height:54px;background:linear-gradient(180deg,#e0bd85,#bd8f4f);border:1px solid rgba(140,90,30,.35);border-radius:7px;box-shadow:0 1px 3px rgba(89,51,46,.25)}
   .hero-title::before{left:-11px}
@@ -261,7 +267,7 @@
   /* ---------- 开卷动画 ---------- */
   #intro{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;pointer-events:none;
     background:radial-gradient(120% 120% at 50% 40%,#f7f0e0,#eadcc0);transition:opacity .8s ease}
-  .intro-scroll{display:flex;align-items:stretch;height:168px;max-width:88vw}
+  .intro-scroll{display:flex;align-items:stretch;height:150px;max-width:88vw}
   .intro-rod{flex:0 0 30px;border-radius:8px;position:relative;
     background:linear-gradient(180deg,#e6c486,#b98d4e 55%,#9a6f34);
     box-shadow:2px 2px 8px rgba(89,51,46,.35)}
@@ -274,11 +280,11 @@
     box-shadow:inset 0 0 0 1px rgba(145,70,66,.12),0 8px 26px rgba(89,51,46,.18);
     transition:flex-basis 1.6s cubic-bezier(.55,0,.2,1)}
   #intro.open .intro-paper{flex-basis:min(70vw,680px)}
-  .intro-paper h1{margin:0;padding:0 16px;font-family:"华文隶书","隶书","LiSu","STLiti","楷体","Songti SC",serif;
-    font-size:clamp(30px,5.2vw,46px);font-weight:700;letter-spacing:.1em;color:#5a3b2c;
+  .intro-paper h1{margin:0;padding:0 16px;font-family:"标题隶书","华文隶书","STLiti","LiSu","Baoli SC","隶书",serif;
+    font-size:clamp(30px,5.2vw,46px);font-weight:700;line-height:1.12;letter-spacing:.1em;color:#5a3b2c;-webkit-text-stroke:.4px currentColor;
     opacity:0;white-space:nowrap;transform:translateY(8px) scale(.96);
     transition:opacity 1.15s ease 1.05s,transform 1.15s ease 1.05s}
-  .intro-paper p{margin:14px 0 0;padding:0 24px;font-family:var(--sans);font-size:13px;color:#8a6a52;letter-spacing:.12em;
+  .intro-paper p{margin:5px 0 0;padding:0 24px;font-family:var(--sans);font-size:13px;line-height:1.55;color:#8a6a52;letter-spacing:.12em;
     opacity:0;transition:opacity 1.1s ease 1.9s}
   #intro.open .intro-paper h1{opacity:1;transform:translateY(0) scale(1)}
   #intro.open .intro-paper p{opacity:1}
