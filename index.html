@@ -559,7 +559,38 @@
     b.textContent = '容老夫思考片刻……';
     msgs.appendChild(b);
     msgs.scrollTop = msgs.scrollHeight;
-    return function(){ b.remove(); };
+    return {
+      setText: function(t){ b.textContent = t; },
+      remove: function(){ b.remove(); }
+    };
+  }
+
+  /* 流式回复气泡：首个 delta 到达时创建，之后逐字追加，完成时补引用与时间 */
+  function addBotStream(){
+    var m = document.createElement('div'); m.className = 'msg bot';
+    var who = document.createElement('div'); who.className = 'who';
+    who.textContent = '袁采';
+    var b = document.createElement('div'); b.className = 'bubble';
+    b.textContent = '';
+    m.appendChild(who); m.appendChild(b);
+    msgs.appendChild(m);
+    return {
+      append: function(t){
+        b.textContent += t;
+        msgs.scrollTop = msgs.scrollHeight;
+      },
+      finish: function(src){
+        if (src){
+          var s = document.createElement('div'); s.className = 'src'; s.textContent = src;
+          m.appendChild(s);
+        }
+        var now = new Date();
+        var tm = document.createElement('div'); tm.className = 'mt';
+        tm.textContent = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+        m.appendChild(tm);
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+    };
   }
   addMsg('bot', '老朽袁采，在此有礼了。世人常困于眼前方寸，不知心宽即是天地。你有何困惑，或是遇到了什么人、什么事，不妨与我说说。');
 
@@ -570,14 +601,33 @@
     input.value = ''; autoGrow();
     addMsg('user', q);
     sendBtn.disabled = true; input.disabled = true;
-    var stopTyping = addTyping();
-    askBackend(q)
-      .then(function(reply){
-        stopTyping();
-        addMsg('bot', reply.text, reply.src);
+    var typing = addTyping();
+    var stream = null;
+
+    // 30 秒还没看到正文，明确安抚（连接其实还活着，只是上游慢）
+    var slowTimer = setTimeout(function(){
+      if (!stream) typing.setText('先生正查阅典籍，尚需片刻，请稍候……');
+    }, 30000);
+
+    function onDelta(t){
+      if (!stream){ typing.remove(); stream = addBotStream(); }
+      stream.append(t);
+    }
+
+    askBackend(q, onDelta)
+      .then(function(ev){
+        clearTimeout(slowTimer);
+        if (stream){
+          stream.finish(ev.src);
+        } else {
+          // 极端兜底：没有任何 delta 但服务端标记完成
+          typing.remove();
+          addMsg('bot', ev.text || '(先生微有片刻沉吟，未能作答。请换一句话再问。)', ev.src);
+        }
       })
       .catch(function(err){
-        stopTyping();
+        clearTimeout(slowTimer);
+        typing.remove();
         addMsg('bot', '（抱歉，先生一时未能作答，请稍后再试：' + (err && err.message ? err.message : '网络异常') + '）');
       })
       .finally(function(){
@@ -600,8 +650,8 @@
     });
   }
 
-  /* ---------- 向本站后端代理请求对话（SSE 流式：心跳保活 + 失败自动重试） ---------- */
-  function askOnce(text){
+  /* ---------- 向本站后端代理请求对话（真流式：delta 逐字渲染 + 心跳保活 + 失败自动重试） ---------- */
+  function askOnce(text, onDelta){
     return fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -637,7 +687,11 @@
             if (!line) continue;
             try {
               var ev = JSON.parse(line);
-              if (ev.type === 'done' || ev.type === 'error') last = ev;
+              if (ev.type === 'delta'){
+                if (ev.text) onDelta(ev.text);
+              } else if (ev.type === 'done' || ev.type === 'error'){
+                last = ev;
+              }
             } catch (_) {}
           }
           return pump();
@@ -646,21 +700,26 @@
       return pump().then(function(ev){
         if (!ev) throw new Error('连接中断，请重试');
         if (ev.type === 'error') throw new Error(ev.error || '生成失败，请重试');
-        return { text: ev.reply || '(先生微有片刻沉吟，未能作答。请换一句话再问。)', src: ev.src || '' };
+        // 正文已通过 delta 实时渲染，这里只回传引用来源
+        return { src: ev.src || '' };
       });
     });
   }
 
-  /* 网络抖动（pages.dev 在部分国内网络下长连接会被随机重置）时自动重试，最多 3 次 */
-  function askBackend(text){
+  /* 网络抖动（pages.dev 在部分国内网络下长连接会被随机重置）时自动重试：
+     指数退避 1s/3s/6s，最多 3 次；一旦已渲染过正文就不再重试（避免内容重复） */
+  function askBackend(text, onDelta){
     var attempts = 0;
+    var gotDelta = false;
+    function forward(t){ gotDelta = true; onDelta(t); }
     function attempt(){
       attempts++;
-      return askOnce(text).catch(function(err){
+      return askOnce(text, forward).catch(function(err){
         var msg = String(err && err.message ? err.message : err);
         var retriable = /Failed to fetch|连接中断|NetworkError|network|ERR_|load failed/i.test(msg);
-        if (retriable && attempts < 3){
-          return new Promise(function(res){ setTimeout(res, 600 * attempts); }).then(attempt);
+        if (retriable && !gotDelta && attempts < 3){
+          var delay = [1000, 3000, 6000][attempts - 1] || 6000;
+          return new Promise(function(res){ setTimeout(res, delay); }).then(attempt);
         }
         throw err;
       });
